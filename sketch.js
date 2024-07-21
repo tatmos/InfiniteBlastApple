@@ -11,7 +11,7 @@ let spawnRate = 600; // 初期の青虫の出現頻度（フレーム数）
 let spawnRateDecrement = 0.95; // 青虫の出現頻度が時間経過で減少する割合
 let gameOverTimer = 0; // ゲームオーバー演出用のタイマー
 let lastCaterpillarSpawnTime = 0; // 最後に青虫が出現した時間
-let spawnInterval = 10000; // 初期の青虫の出現間隔（ミリ秒）
+let spawnInterval = 5000; // 初期の青虫の出現間隔（ミリ秒）
 const maxCaterpillars = 5; // 青虫の最大数
 
 let gameStarted = false;
@@ -37,7 +37,10 @@ let diminishedOscillators = [];
 let basket1Oscillator;
 let highPitchOscillator;
 let noise;
-
+let treeImage;
+function preload() {
+  treeImage = loadImage('tree.png'); // Load your tree image here
+}
 function setup() {
   createCanvas(800, 800);
   noise = new p5.Noise('white');
@@ -80,6 +83,8 @@ function setup() {
 
 function draw() {
   background(255);
+  image(treeImage, width/2 - treeImage.width/2, height/2 - treeImage.height/2);
+  
   handleExplosions();
   handleApples();
   handleCaterpillars();
@@ -104,9 +109,6 @@ function draw() {
       gameOverTimer++;
     }
     displayGameOver();
-  } else if (!gameStarted) {
-    // ゲーム開始画面を表示しない
-    gameStarted = true;
   } else {
     // 時間経過で青虫の出現頻度を調整
     if (millis() - lastCaterpillarSpawnTime > spawnInterval && apples.length > 0 && caterpillars.length < maxCaterpillars) {
@@ -121,6 +123,7 @@ function draw() {
 
 function mousePressed() {
   if (gameOver) {
+    gameStarted = false;
     restartGame();
   } else {
     explosions.push(new Explosion(mouseX, mouseY));
@@ -210,7 +213,7 @@ function handleCaterpillars() {
     if (frameCount % 120 === 0) {
       let targetApple = null;
       for (let apple of apples) {
-        if (!apple.damaged && apple.ripe) {
+        if (!apple.damaged && apple.ripe && !apple.yellow) {
           targetApple = apple;
           break;
         }
@@ -290,7 +293,7 @@ function restartGame() {
   obstacles = [];
   baskets = [];
   spawnRate = 600; // リセット時に初期値に戻す
-  spawnInterval = 10000; // リセット時に初期値に戻す
+  spawnInterval = 5000; // リセット時に初期値に戻す
   gameOverTimer = 0; // タイマーをリセット
   gameStarted = true;
   gameOver = false;
@@ -417,7 +420,7 @@ class Explosion {
     this.sweepOsc.pan(this.panning);
     this.sweepOsc.start();
     this.sweepOsc.freq(this.baseFreq);
-    this.sweepOsc.amp(0.125, 0.1); // 音量を0.125に設定し、徐々に上げる
+    this.sweepOsc.amp(0.125, 0.01); // 音量を0.125に設定し、徐々に上げる
   }
 
   update() {
@@ -511,6 +514,7 @@ class Caterpillar {
   constructor(x, y) {
     this.x = x;
     this.y = y;
+    this.size = 10;
     this.speed = 0.01; // 速度を倍に調整
     this.velocity = createVector(0, 0);
     this.target = null;
@@ -544,9 +548,10 @@ class Caterpillar {
   display() {
     // 青虫を3つの丸で表現し、頭に目をつける
     fill(0, 255, 0);
-    ellipse(this.x, this.y, 20, 20); // 頭
-    ellipse(this.x - 15, this.y, 15, 15); // 胴体1
-    ellipse(this.x - 30, this.y, 10, 10); // 胴体2
+    let headSize = this.size;
+    ellipse(this.x, this.y, headSize, headSize); // 頭
+    ellipse(this.x + headSize, this.y, headSize, headSize); // 胴体1
+    ellipse(this.x + headSize*2, this.y, headSize, headSize); // 胴体2
     // 目を描画
     fill(0);
     ellipse(this.x - 5, this.y - 5, 3, 3);
@@ -635,7 +640,7 @@ class Obstacle {
   playSound() {
     this.oscillator.freq(random(scales[chordIndex]));
     this.oscillator.amp(0.5, 0.05);
-    this.oscillator.amp(0, 0.1); // 音を短めに設定
+    this.oscillator.amp(0, 0.5); // 音を短めに設定
   }
 }
 
@@ -644,7 +649,7 @@ function playChord() {
   for (let i = 0; i < 3; i++) {
     triadOscillators[i].freq(chord[i]);
     triadOscillators[i].amp(0.5, 0.05);
-    triadOscillators[i].amp(0, 0.1); // 音を短めに設定
+    triadOscillators[i].amp(0, 0.5); // 音を短めに設定
   }
   chordIndex = (chordIndex + 1) % chords.length;
 }
@@ -654,7 +659,7 @@ function playBasket1Sound() {
   let note = random(scale);
   basket1Oscillator.freq(note);
   basket1Oscillator.amp(0.5, 0.05);
-  basket1Oscillator.amp(0, 0.1); // 音を短めに設定
+  basket1Oscillator.amp(0, 0.5); // 音を短めに設定
 }
 
 function playSus4ChordWithPanning(x) {
@@ -666,7 +671,7 @@ function playSus4ChordWithPanning(x) {
     sus4Oscillators[i].freq(chord[i]);
     sus4Oscillators[i].pan(panning);
     sus4Oscillators[i].amp(0.5, 0.05);
-    sus4Oscillators[i].amp(0, 0.1); // 音を短めに設定
+    sus4Oscillators[i].amp(0, 0.5); // 音を短めに設定
   }
 }
 
@@ -684,7 +689,7 @@ function playNoise(x) {
   let panning = map(x, 0, width, -1, 1); // パンニングをx位置に基づいて設定
   noise.pan(panning);
   noise.amp(0.5, 0.05);
-  noise.amp(0, 0.1); // 音を短めに設定
+  noise.amp(0, 0.25); // 音を短めに設定
 }
 
 function playHighPitchSound() {
@@ -692,7 +697,7 @@ function playHighPitchSound() {
   let pitch = random(scale) * 2; // スケール音のオクターブ上の音
   highPitchOscillator.freq(pitch);
   highPitchOscillator.amp(0.5, 0.05);
-  highPitchOscillator.amp(0, 0.1); // 音を短めに設定
+  highPitchOscillator.amp(0, 0.5); // 音を短めに設定
 }
 
 function stopAllOscillators() {
@@ -711,6 +716,10 @@ function stopAllOscillators() {
 }
 
 function checkGameOverCondition() {
+  if (apples.length < 5)
+  {
+    return false;
+  }
   let damagedCount = apples.filter(apple => apple.damaged).length;
   return damagedCount >= apples.length / 2;
 }
